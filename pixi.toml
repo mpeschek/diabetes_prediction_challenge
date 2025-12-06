@@ -1,0 +1,12 @@
+[workspace]
+authors = ["mpeschek <michaelpeschek@icloud.com>"]
+channels = ["conda-forge"]
+name = "diabetes_prediction_challenge"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = ">=3.14.2,<3.15"
+pandas = ">=2.3.3,<3"
