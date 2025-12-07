@@ -12,7 +12,23 @@ def main():
 
     # correlation_matrix = get_correlation(X_train, y_train)
 
-    random_forest(X_train, X_test, y_train, y_test)
+    trained_model = random_forest(X_train, X_test, y_train, y_test)
+
+    # Read and process the real test data
+    df_test_processed = get_data("data/test.csv")
+    test_ids = df_test_processed.index
+
+    # Predict test data with trained model
+    final_probabilities = trained_model.predict_proba(df_test_processed)
+    submission_values = final_probabilities[:, 1]
+
+    # Create a submission file
+    submis = pd.DataFrame({
+        'id': test_ids,
+        'diagnosed_diabetes': submission_values
+    })
+    submis.to_csv("submissions/2025_12_07_diabetes_prediction.csv", index=False)
+
 
 
 def get_data(filename):
@@ -30,13 +46,14 @@ def get_data(filename):
     # print(df.isna().sum())
 
     # Reorder the columns so the "diagnosed_diabetes" columns is still at the end
-    reorder_columns = [col for col in df.columns if col != "diagnosed_diabetes"]
-    reorder_columns.append("diagnosed_diabetes")
-    df = df[reorder_columns]
+    if filename == "data/train.csv":
+        reorder_columns = [col for col in df.columns if col != "diagnosed_diabetes"]
+        reorder_columns.append("diagnosed_diabetes")
+        df = df[reorder_columns]
 
     bool_cols = df.select_dtypes(include=['bool']).columns
     df[bool_cols] = df[bool_cols].astype(int)
-
+    
     return df
 
 
@@ -81,7 +98,7 @@ def random_forest(X_train, X_test, y_train, y_test):
     # Use test data set and evaluate the result
     y_predicted = trained_model.predict_proba(X_test)[:, 1]
     score = roc_auc_score(y_test, y_predicted)
-    print(f"Validation ROC-AUC score: {highlight.bold}{score:.5f}{highlight.end}")
+    print(f"{highlight.bold}Validation ROC-AUC score (train-test-splitting): {score:.5f}{highlight.end}")
 
     return trained_model
 
