@@ -6,8 +6,7 @@ from sklearn.metrics import roc_auc_score
 
 
 def main():
-    df = get_data()
-    df = df.astype(int)
+    df = get_data("data/train.csv")
     
     X_train, X_test, y_train, y_test = split_data(df)
 
@@ -16,11 +15,11 @@ def main():
     random_forest(X_train, X_test, y_train, y_test)
 
 
-def get_data():
+def get_data(filename):
     '''
     import and clean the train data
     '''
-    df = pd.read_csv("data/train.csv", index_col=0)
+    df = pd.read_csv(filename, index_col=0)
     df = pd.get_dummies(
         df,
         columns=["gender", "ethnicity", "education_level", "income_level", "smoking_status", "employment_status"],
@@ -83,6 +82,8 @@ def random_forest(X_train, X_test, y_train, y_test):
     y_predicted = trained_model.predict_proba(X_test)[:, 1]
     score = roc_auc_score(y_test, y_predicted)
     print(f"Validation ROC-AUC score: {highlight.bold}{score:.5f}{highlight.end}")
+
+    return trained_model
 
 
 def random_forest_training(X, y):
