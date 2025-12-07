@@ -13,12 +13,7 @@ def main():
 
     # correlation_matrix = get_correlation(X_train, y_train)
 
-    trained_model = random_forest(X_train, y_train)
-
-    # Use test data set and evaluate the result
-    y_predicted = trained_model.predict_proba(X_test)[:, 1]
-    score = roc_auc_score(y_test, y_predicted)
-    print(f"Validation ROC-AUC score: {highlight.bold}{score:.5f}{highlight.end}")
+    random_forest(X_train, X_test, y_train, y_test)
 
 
 def get_data():
@@ -77,7 +72,20 @@ def get_correlation(X, y):
     return corr
 
 
-def random_forest(X, y):
+def random_forest(X_train, X_test, y_train, y_test):
+    '''
+    use random forest model
+    '''
+
+    trained_model = random_forest_training(X_train, y_train)
+
+    # Use test data set and evaluate the result
+    y_predicted = trained_model.predict_proba(X_test)[:, 1]
+    score = roc_auc_score(y_test, y_predicted)
+    print(f"Validation ROC-AUC score: {highlight.bold}{score:.5f}{highlight.end}")
+
+
+def random_forest_training(X, y):
     '''
     random forest model
     '''
