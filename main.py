@@ -2,6 +2,7 @@ import pandas as pd
 import time
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score
 
 
 def main():
@@ -13,6 +14,11 @@ def main():
     # correlation_matrix = get_correlation(X_train, y_train)
 
     trained_model = random_forest(X_train, y_train)
+
+    # Use test data set and evaluate the result
+    y_predicted = trained_model.predict_proba(X_test)[:, 1]
+    score = roc_auc_score(y_test, y_predicted)
+    print(f"Validation ROC-AUC score: {highlight.bold}{score:.5f}{highlight.end}")
 
 
 def get_data():
@@ -75,7 +81,7 @@ def random_forest(X, y):
     '''
     random forest model
     '''
-    rf_model = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+    rf_model = RandomForestClassifier(n_estimators=500, random_state=42, n_jobs=-1)
 
     print("random forest model getting trained\n...")
     time_start = time.perf_counter()
@@ -86,6 +92,11 @@ def random_forest(X, y):
     print(f"training finished | training time: {(time_end - time_start):.2f} s")
 
     return rf_model
+
+
+class highlight:
+    bold = '\033[1m'
+    end = '\033[0m'
 
 
 if __name__ == "__main__":
