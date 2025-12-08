@@ -1,6 +1,10 @@
 import pandas as pd
 import time
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
@@ -12,7 +16,7 @@ def main():
 
     # correlation_matrix = get_correlation(X_train, y_train)
 
-    trained_model = random_forest(X_train, X_test, y_train, y_test)
+    trained_model = logistic_regression(X_train, X_test, y_train, y_test)
 
     # Read and process the real test data
     df_test_processed = get_data("data/test.csv")
@@ -27,13 +31,12 @@ def main():
         'id': test_ids,
         'diagnosed_diabetes': submission_values
     })
-    submis.to_csv("submissions/2025_12_07_diabetes_prediction.csv", index=False)
-
+    submis.to_csv("submissions/2025_12_08_diabetes_prediction_logistic_regression.csv", index=False)
 
 
 def get_data(filename):
     '''
-    import and clean the train data
+    import and clean the data
     '''
     df = pd.read_csv(filename, index_col=0)
     df = pd.get_dummies(
@@ -86,6 +89,40 @@ def get_correlation(X, y):
     print(corr['diagnosed_diabetes'].sort_values())
 
     return corr
+
+
+def logistic_regression(X_train, X_test, y_train, y_test):
+    '''
+    Trains a logistic regression model with automatic scaling and imputation
+    '''
+    trained_model = logistic_regression_training(X_train, y_train)
+
+    y_predicted = trained_model.predict_proba(X_test)[:, 1]
+    score = roc_auc_score(y_test, y_predicted)
+    print(f"{highlight.bold}Validation ROC-AUC score (train-test-splitting): {score:.5f}{highlight.end}")
+
+    return trained_model
+
+
+def logistic_regression_training(X, y):
+    '''
+    logistic regression training
+    '''
+    lr_model = make_pipeline(
+        SimpleImputer(strategy='median'),
+        StandardScaler(),
+        LogisticRegression(C=1.0, random_state=42, solver='liblinear')
+    )
+
+    print("random logistic regression model getting trained\n...")
+    time_start = time.perf_counter()
+
+    lr_model.fit(X, y)
+
+    time_end = time.perf_counter()
+    print(f"training finished | training time: {(time_end - time_start):.2f} s")
+
+    return lr_model
 
 
 def random_forest(X_train, X_test, y_train, y_test):
