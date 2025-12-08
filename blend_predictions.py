@@ -6,7 +6,7 @@ def main():
 
     blend_pred = pd.DataFrame({
         'id': xgb_submission['id'],
-        'diagnosed_diabetes': (0.7 * xgb_submission['diagnosed_diabetes']) + (0.3 * lr_submission['diagnosed_diabetes'])
+        'diagnosed_diabetes': (0.75 * xgb_submission['diagnosed_diabetes']) + (0.25 * lr_submission['diagnosed_diabetes'])
     })
 
     blend_pred.to_csv("submissions/2025_12_08_diabetes_prediction_blend_lr_xgb.csv", index=False)
