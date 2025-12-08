@@ -1,5 +1,6 @@
-import pandas as pd
 import time
+import pandas as pd
+import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -16,7 +17,7 @@ def main():
 
     # correlation_matrix = get_correlation(X_train, y_train)
 
-    trained_model = logistic_regression(X_train, X_test, y_train, y_test)
+    trained_model = gradient_boost_machine_xgb(X_train, X_test, y_train, y_test)
 
     # Read and process the real test data
     df_test_processed = get_data("data/test.csv")
@@ -31,7 +32,7 @@ def main():
         'id': test_ids,
         'diagnosed_diabetes': submission_values
     })
-    submis.to_csv("submissions/2025_12_08_diabetes_prediction_logistic_regression.csv", index=False)
+    submis.to_csv("submissions/2025_12_08_diabetes_prediction_xgboost.csv", index=False)
 
 
 def get_data(filename):
@@ -155,6 +156,48 @@ def random_forest_training(X, y):
     print(f"training finished | training time: {(time_end - time_start):.2f} s")
 
     return rf_model
+
+
+def gradient_boost_machine_xgb(X_train, X_test, y_train, y_test):
+    '''
+    get xgboost model
+    '''
+    trained_model = xgb_train(X_train, X_test, y_train, y_test)
+
+    y_predicted = trained_model.predict_proba(X_test)[:, 1]
+    score = roc_auc_score(y_test, y_predicted)
+    print(f"{highlight.bold}Validation ROC-AUC score (train-test-splitting): {score:.5f}{highlight.end}")
+
+    return trained_model
+
+
+def xgb_train(X_train, X_test, y_train, y_test):
+
+    model = xgb.XGBClassifier(
+        n_estimators=1000,
+        learning_rate=0.05,
+        max_depth=4,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective='binary:logistic',
+        random_state=42,
+        n_jobs=-1,
+        eval_metric="auc",
+        early_stopping_rounds=50
+    )
+    
+    print("random xgboost getting trained\n...")
+    time_start = time.perf_counter()
+
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_test, y_test)],
+        verbose=100
+    )
+
+    time_end = time.perf_counter()
+    print(f"training finished | training time: {(time_end - time_start):.2f} s")
+    return model
 
 
 class highlight:
