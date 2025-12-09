@@ -32,7 +32,7 @@ def main():
         'id': test_ids,
         'diagnosed_diabetes': submission_values
     })
-    submis.to_csv("submissions/2025_12_08_diabetes_prediction_xgboost.csv", index=False)
+    submis.to_csv("submissions/2025_12_09_diabetes_prediction_xgboost_encoded_features.csv", index=False)
 
 
 def get_data(filename):
@@ -40,14 +40,20 @@ def get_data(filename):
     import and clean the data
     '''
     df = pd.read_csv(filename, index_col=0)
+
+    df = encode_features(df)
     df = pd.get_dummies(
         df,
-        columns=["gender", "ethnicity", "education_level", "income_level", "smoking_status", "employment_status"],
-        drop_first=False
+        columns=["gender", "ethnicity", "smoking_status", "employment_status"],
+        drop_first=True
     )
-
     # Checked for .isna() but it is 0 in each column
     # print(df.isna().sum())
+
+    bool_cols = df.select_dtypes(include=['bool']).columns
+    df[bool_cols] = df[bool_cols].astype(int)
+    
+    # df = feature_engineering(df)
 
     # Reorder the columns so the "diagnosed_diabetes" columns is still at the end
     if filename == "data/train.csv":
@@ -55,9 +61,49 @@ def get_data(filename):
         reorder_columns.append("diagnosed_diabetes")
         df = df[reorder_columns]
 
-    bool_cols = df.select_dtypes(include=['bool']).columns
-    df[bool_cols] = df[bool_cols].astype(int)
+    return df
+
+
+def encode_features(df):
+
+    edu_level = {
+        'No formal' : 0,
+        'Highschool': 1,
+        'Graduate': 2,
+        'Postgraduate': 3
+    }
+    inc_level = {
+        'Low': 0,
+        'Lower-Middle': 1,
+        'Middle': 2,
+        'Upper-Middle': 3,
+        'High': 4
+    }
+
+    df['education_level'] = df['education_level'].map(edu_level)
+    df['income_level'] = df['income_level'].map(inc_level)
+
+    return df
+
+
+def feature_engineering(df):
+
+    # hdl_has no 0 as value, so dividing by will not cause a crash (used .value_counts())
+    df['Triglycerides/HDL-ratio'] = df['triglycerides'] / df['hdl_cholesterol']
+    df['LDL/HDL-ratio'] = df['ldl_cholesterol'] / df['hdl_cholesterol']
+    df['total_cholesterol/HDL-ratio'] = df['cholesterol_total'] / df['hdl_cholesterol']
+
+    # pulse pressure indicates the stiffness of arteries
+    df['pulse_pressure'] = df['systolic_bp'] - df['diastolic_bp']
+    # MAP: Mean Arterial Pressure
+    df['MAP'] = (df['systolic_bp'] + (2 * df['diastolic_bp'])) / 3
     
+    # BMI-waist-interaction
+    df['BMI-waist-interaction'] = df['bmi'] * df['waist_to_hip_ratio']
+
+    # Lifestyle score from screentime and sleep
+    df['anti_lifestyle_score'] = df['screen_time_hours_per_day'] / (df['physical_activity_minutes_per_week'] + 1)
+
     return df
 
 
@@ -192,7 +238,7 @@ def xgb_train(X_train, X_test, y_train, y_test):
     model.fit(
         X_train, y_train,
         eval_set=[(X_test, y_test)],
-        verbose=100
+        verbose=200
     )
 
     time_end = time.perf_counter()
