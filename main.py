@@ -1,7 +1,8 @@
 import time
 import pandas as pd
+import numpy as np
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
@@ -10,7 +11,26 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
 
-def main():
+def kfold():
+    df = get_data("data/train.csv")
+    
+    X = df.drop(columns=['diagnosed_diabetes'])
+    y = df['diagnosed_diabetes']
+
+    df_test = get_data("data/test.csv")
+
+    submis_values, final_score = gradient_boost_machine_xgb_kfold(X, y, df_test)
+
+    submis = pd.DataFrame({
+        'id': df_test.index,
+        'diagnosed_diabetes': submis_values
+    })
+
+    submis.to_csv(f"submissions/2025_12_09_xgb_kfold_{final_score:.4f}.csv", index=False)
+
+
+def single_train_test_split():
+    
     df = get_data("data/train.csv")
     
     X_train, X_test, y_train, y_test = split_data(df)
@@ -32,7 +52,7 @@ def main():
         'id': test_ids,
         'diagnosed_diabetes': submission_values
     })
-    submis.to_csv("submissions/2025_12_09_diabetes_prediction_xgboost_encoded_features.csv", index=False)
+    submis.to_csv("submissions/2025_12_09_diabetes_prediction_xgboost.csv", index=False)
 
 
 def get_data(filename):
@@ -246,10 +266,67 @@ def xgb_train(X_train, X_test, y_train, y_test):
     return model
 
 
+def gradient_boost_machine_xgb_kfold(X, y, df_test):
+    '''
+    Training different XGB models on several subsets of the data
+    '''
+    time_start = time.perf_counter()
+
+    kf=StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    oof_preds = np.zeros(len(X))
+    test_preds = np.zeros(len(df_test))
+
+    cv_scores = []
+
+    print("start training kfold xgb models")
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+        X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
+        X_val, y_val = X.iloc[val_idx], y.iloc[val_idx]
+
+        # decreased max depth to be safer vs overfitting
+        model = xgb.XGBClassifier(
+            n_estimators=1000,
+            learning_rate=0.05,
+            max_depth=3,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective='binary:logistic',
+            random_state=42,
+            n_jobs=-1,
+            eval_metric="auc",
+            early_stopping_rounds=100
+        )
+
+        model.fit(
+            X_train, y_train,
+            eval_set=[(X_val, y_val)],
+            verbose=False
+        )
+    
+        val_preds = model.predict_proba(X_val)[:, 1]
+        oof_preds[val_idx] = val_preds
+        
+        fold_score = roc_auc_score(y_val, val_preds)
+        cv_scores.append(fold_score)
+        print(f"Fold {fold+1} AUC: {fold_score:.5f}")
+        
+        test_preds += model.predict_proba(df_test)[:, 1] / 5
+
+    time_end = time.perf_counter()
+    overall_auc = roc_auc_score(y, oof_preds)
+    print(f"Training Finished in {(time_end - time_start):.2f}s")
+    print(f"Average Fold Score: {np.mean(cv_scores):.5f}")
+    print(f"Overall OOF Score:  {overall_auc:.5f} (Trust this one!)")
+
+    return test_preds, overall_auc
+
+
 class highlight:
     bold = '\033[1m'
     end = '\033[0m'
 
 
 if __name__ == "__main__":
-    main()
+    kfold()
