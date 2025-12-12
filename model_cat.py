@@ -17,7 +17,7 @@ def main():
         'diagnosed_diabetes': submis_predictions
     })
 
-    submis.to_csv("submissions/2025_12_10_catboost_kfold.csv")
+    submis.to_csv("submissions/2025_12_12_catboost_kfold.csv", index=False)
 
 
 
