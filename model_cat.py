@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 import numpy as np
-from catboost import CatBoostClassifier, Pool
+from catboost import CatBoostClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
