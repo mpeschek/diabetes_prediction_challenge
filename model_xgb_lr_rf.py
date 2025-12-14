@@ -2,6 +2,7 @@ import time
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler

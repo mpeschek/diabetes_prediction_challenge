@@ -17,12 +17,13 @@ def main():
         'diagnosed_diabetes': submis_predictions
     })
 
-    submis.to_csv("submissions/2025_12_12_catboost_kfold.csv", index=False)
+    submis.to_csv("submissions/2025_12_13_catboost_kfold.csv", index=False)
 
 
 
 def get_data(filename):
     df = pd.read_csv(filename)
+    df = df.drop(columns=['hypertension_history', 'gender', 'smoking_status'])
 
     return df
 
@@ -32,7 +33,8 @@ def train_catboost_kfold(df_train, df_test):
     time_start = time.perf_counter()
     print("start catboost training")
 
-    cat_features = ['gender', 'ethnicity', 'education_level', 'income_level', 'smoking_status', 'employment_status']
+    # cat_features = ['gender', 'ethnicity', 'education_level', 'income_level', 'smoking_status', 'employment_status']
+    cat_features = ['ethnicity', 'education_level', 'income_level', 'employment_status']
 
     for col in cat_features:
         df_train[col] = df_train[col].astype(str)
@@ -77,6 +79,43 @@ def train_catboost_kfold(df_train, df_test):
     print(f"catboost training finished: {(time_end - time_start):.2f} s")
 
     return test_predictions
+
+
+def check_feature_importance():
+    '''
+    Analyze the feature importance of for a given dataframe
+    '''
+    
+    df = get_data("data/train.csv")
+
+    cat_features = ['gender', 'ethnicity', 'education_level', 'income_level', 'smoking_status', 'employment_status']
+
+    for col in cat_features:
+        df[col] = df[col].astype(str)
+
+    X = df.drop(columns=['diagnosed_diabetes'])
+    y = df['diagnosed_diabetes']
+
+    model = CatBoostClassifier(
+        iterations=500,
+        learning_rate=0.05,
+        depth=6,
+        cat_features=cat_features,
+        verbose=False,
+        random_seed=42
+    )
+
+    model.fit(X, y)
+
+    importance = model.get_feature_importance(type='PredictionValuesChange')
+    features = X.columns
+
+    feature_df = pd.DataFrame({'features': features, 'importance': importance})
+    feature_df = feature_df.sort_values(by='importance', ascending=False)
+
+    print(f"feature ranking:\n{feature_df}")
+
+    
 
 
 if __name__ == "__main__":
